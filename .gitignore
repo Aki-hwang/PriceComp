@@ -2,3 +2,6 @@ node_modules/
 .env
 *.log
 .DS_Store
+
+# 사용자 계정/비밀 정보 (커밋 금지)
+data/users.json

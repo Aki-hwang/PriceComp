@@ -10,8 +10,10 @@
  * "최종 결제가 = 판매가 + 배송비(무료배송 조건 충족 시 0원)" 를 계산해 준다.
  */
 const express = require('express');
+const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
+const store = require('./lib/store');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +25,90 @@ const mockProducts = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'data', 'mock-products.json'), 'utf-8')
 );
 
+app.use(express.json());
+app.use(
+  session({
+    secret: process.env.APP_SECRET || 'dev-insecure-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 7 },
+  })
+);
 app.use(express.static(path.join(__dirname, 'public')));
+
+/* ------------------------------------------------------------ 인증 / 계정 */
+
+/** 저장된 소스의 암호화 필드를 복호화해 클라이언트로 돌려줄 형태로 변환 */
+function decodeSources(sources = []) {
+  return sources.map((s) => ({
+    name: s.name,
+    id: store.decrypt(s.id),
+    password: store.decrypt(s.password),
+    key: store.decrypt(s.key),
+  }));
+}
+
+function validateCreds(body) {
+  const username = (body.username || '').trim();
+  const password = body.password || '';
+  if (username.length < 3) return '아이디는 3자 이상이어야 합니다.';
+  if (!/^[a-zA-Z0-9_.-]+$/.test(username)) return '아이디는 영문/숫자/._- 만 사용할 수 있습니다.';
+  if (password.length < 4) return '비밀번호는 4자 이상이어야 합니다.';
+  return null;
+}
+
+app.post('/api/signup', (req, res) => {
+  const err = validateCreds(req.body);
+  if (err) return res.status(400).json({ error: err });
+  const username = req.body.username.trim();
+  const users = store.readUsers();
+  if (users[username]) return res.status(409).json({ error: '이미 존재하는 아이디입니다.' });
+
+  const { salt, hash } = store.hashPassword(req.body.password);
+  users[username] = { salt, hash, sources: [] };
+  store.writeUsers(users);
+  req.session.user = username;
+  res.json({ user: username, sources: [] });
+});
+
+app.post('/api/login', (req, res) => {
+  const username = (req.body.username || '').trim();
+  const users = store.readUsers();
+  const u = users[username];
+  if (!u || !store.verifyPassword(req.body.password || '', u.salt, u.hash)) {
+    return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+  }
+  req.session.user = username;
+  res.json({ user: username, sources: decodeSources(u.sources) });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+app.get('/api/me', (req, res) => {
+  const users = store.readUsers();
+  const u = req.session.user && users[req.session.user];
+  if (!u) return res.json({ user: null });
+  res.json({ user: req.session.user, sources: decodeSources(u.sources) });
+});
+
+app.put('/api/sources', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const users = store.readUsers();
+  const u = users[req.session.user];
+  if (!u) return res.status(401).json({ error: '세션이 만료되었습니다. 다시 로그인해 주세요.' });
+
+  const incoming = Array.isArray(req.body.sources) ? req.body.sources : [];
+  u.sources = incoming.slice(0, 20).map((s) => ({
+    name: String(s.name || '').slice(0, 60),
+    id: store.encrypt(String(s.id || '').slice(0, 200)),
+    password: store.encrypt(String(s.password || '').slice(0, 200)),
+    key: store.encrypt(String(s.key || '').slice(0, 400)),
+  }));
+  store.writeUsers(users);
+  res.json({ sources: decodeSources(u.sources) });
+});
 
 /** 판매처 이름으로 배송 정책을 찾는다. 등록되지 않은 판매처는 기본 정책을 쓴다. */
 function getShippingPolicy(mallName) {

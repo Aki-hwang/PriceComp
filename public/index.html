@@ -12,8 +12,9 @@
       <div class="brand">
         <span class="brand-mark">Rx</span>
         <span class="brand-name">PriceComp</span>
+        <span class="brand-sub">의약품 · 건강기능식품 최저가 비교</span>
       </div>
-      <span class="brand-sub">의약품 · 건강기능식품 최저가 비교</span>
+      <div class="auth-area" id="auth-area"></div>
     </div>
   </header>
 
@@ -47,15 +48,21 @@
     <details class="sources-panel">
       <summary>검색 소스 설정 <span class="source-badge" id="source-badge">데모</span></summary>
       <div class="sources-body">
-        <p class="sources-note">
-          가격을 어디서 가져올지 설정합니다. 여러 소스를 추가할 수 있으며,
-          각 소스는 <strong>공개 검색 API 키</strong>로 연결합니다.
+        <p class="sources-note" id="sources-note">
+          가격을 어디서 가져올지 설정합니다. <strong>로그인하면 설정이 계정에 저장</strong>되어
+          다음에도 그대로 사용할 수 있습니다.
         </p>
         <div id="sources-list" class="sources-list"></div>
-        <button type="button" id="add-source" class="btn-secondary">+ 소스 추가</button>
+        <div class="sources-actions">
+          <button type="button" id="add-source" class="btn-secondary">+ 소스 추가</button>
+          <button type="button" id="save-sources" class="btn-primary" hidden>저장</button>
+          <span class="save-state" id="save-state"></span>
+        </div>
         <p class="sources-warn">
-          ⚠️ 보안 안내: 쇼핑몰 <strong>개인 아이디/비밀번호는 입력받지 않습니다.</strong>
-          자세한 이유는 아래 안내를 참고하세요.
+          🔒 보안 안내: 계정 비밀번호는 <strong>해시로만</strong>, 소스에 입력한 아이디/비번은
+          <strong>암호화(AES-256-GCM)</strong>되어 저장됩니다. 다만 실제 가격 조회는
+          <strong>공개 검색 API 키</strong>로 동작하며, 쇼핑몰 로그인 정보는 가격 비교에
+          꼭 필요하지 않습니다.
         </p>
       </div>
     </details>
@@ -74,6 +81,29 @@
       </p>
     </div>
   </footer>
+
+  <!-- 로그인 / 회원가입 모달 -->
+  <div class="modal-backdrop" id="auth-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button class="modal-close" id="auth-close" aria-label="닫기">✕</button>
+      <div class="modal-tabs">
+        <button type="button" data-tab="login" class="active">로그인</button>
+        <button type="button" data-tab="signup">회원가입</button>
+      </div>
+      <form id="auth-form" autocomplete="on">
+        <label class="field">
+          <span>아이디</span>
+          <input id="auth-username" type="text" autocomplete="username" placeholder="영문/숫자 3자 이상" />
+        </label>
+        <label class="field">
+          <span>비밀번호</span>
+          <input id="auth-password" type="password" autocomplete="current-password" placeholder="4자 이상" />
+        </label>
+        <p class="auth-error" id="auth-error"></p>
+        <button type="submit" id="auth-submit" class="btn-primary block">로그인</button>
+      </form>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
