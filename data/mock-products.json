@@ -1,0 +1,76 @@
+[
+  {
+    "name": "타이레놀정 500mg",
+    "brand": "한국얀센",
+    "spec": "10정",
+    "keywords": ["타이레놀", "tylenol", "아세트아미노펜", "해열", "진통"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 4800, "link": "#" },
+      { "mallName": "11번가", "price": 4200, "link": "#" },
+      { "mallName": "G마켓", "price": 3900, "link": "#" },
+      { "mallName": "약국", "price": 3500, "link": "#" }
+    ]
+  },
+  {
+    "name": "게보린정",
+    "brand": "삼진제약",
+    "spec": "10정",
+    "keywords": ["게보린", "두통", "진통", "생리통"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 5200, "link": "#" },
+      { "mallName": "옥션", "price": 4700, "link": "#" },
+      { "mallName": "SSG닷컴", "price": 4900, "link": "#" }
+    ]
+  },
+  {
+    "name": "판콜에이내복액",
+    "brand": "동화약품",
+    "spec": "30ml x 10병",
+    "keywords": ["판콜", "판콜에이", "감기", "종합감기약"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 8900, "link": "#" },
+      { "mallName": "11번가", "price": 8200, "link": "#" },
+      { "mallName": "롯데ON", "price": 8500, "link": "#" }
+    ]
+  },
+  {
+    "name": "센트룸 멀티비타민",
+    "brand": "센트룸",
+    "spec": "100정",
+    "keywords": ["센트룸", "centrum", "종합비타민", "멀티비타민", "영양제"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 23900, "link": "#" },
+      { "mallName": "G마켓", "price": 21500, "link": "#" },
+      { "mallName": "위메프", "price": 19800, "link": "#" },
+      { "mallName": "SSG닷컴", "price": 22400, "link": "#" }
+    ]
+  },
+  {
+    "name": "인사돌플러스정",
+    "brand": "동국제약",
+    "spec": "100정",
+    "keywords": ["인사돌", "잇몸", "치주"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 18500, "link": "#" },
+      { "mallName": "11번가", "price": 17200, "link": "#" },
+      { "mallName": "옥션", "price": 16900, "link": "#" }
+    ]
+  },
+  {
+    "name": "훼스탈골드정",
+    "brand": "한독",
+    "spec": "40정",
+    "keywords": ["훼스탈", "소화", "소화제", "소화효소"],
+    "image": "",
+    "offers": [
+      { "mallName": "쿠팡", "price": 9800, "link": "#" },
+      { "mallName": "G마켓", "price": 8900, "link": "#" },
+      { "mallName": "롯데ON", "price": 9200, "link": "#" }
+    ]
+  }
+]

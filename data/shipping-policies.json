@@ -1,0 +1,19 @@
+{
+  "default": {
+    "fee": 3000,
+    "freeThreshold": 30000,
+    "note": "기본 배송 정책(추정)"
+  },
+  "malls": {
+    "쿠팡": { "fee": 0, "freeThreshold": null, "note": "로켓배송/와우회원 기준" },
+    "쿠팡 로켓배송": { "fee": 0, "freeThreshold": null, "note": "와우회원 무료배송" },
+    "네이버": { "fee": 2500, "freeThreshold": 20000, "note": "판매처별 상이" },
+    "11번가": { "fee": 2500, "freeThreshold": 20000 },
+    "G마켓": { "fee": 2500, "freeThreshold": 30000 },
+    "옥션": { "fee": 2500, "freeThreshold": 30000 },
+    "SSG닷컴": { "fee": 3000, "freeThreshold": 40000, "note": "쓱배송 조건 상이" },
+    "롯데ON": { "fee": 3000, "freeThreshold": 30000 },
+    "위메프": { "fee": 2500, "freeThreshold": 20000 },
+    "약국": { "fee": 3000, "freeThreshold": 50000, "note": "일반의약품은 온라인 판매 불가, 약국 방문 필요" }
+  }
+}

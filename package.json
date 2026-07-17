@@ -1,0 +1,17 @@
+{
+  "name": "pricecomp",
+  "version": "1.0.0",
+  "description": "의약품/건강기능식품 가격 비교 사이트 - 배송비 및 조건 포함 최종가 비교",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "license": "MIT"
+}

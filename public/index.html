@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PriceComp · 의약품 가격 비교</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">℞</span>
+        <span class="brand-name">PriceComp</span>
+      </div>
+      <span class="brand-sub">의약품 · 건강기능식품 최저가 비교</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>배송비까지 포함한 <em>진짜 최저가</em>를 찾아드려요</h1>
+      <p class="hero-desc">
+        의약품 이름을 입력하면 여러 판매처의 가격과 배송 조건을 비교해
+        최종 결제가 기준으로 정렬해 드립니다.
+      </p>
+
+      <form id="search-form" class="search-box" autocomplete="off">
+        <input
+          id="search-input"
+          type="text"
+          placeholder="예: 타이레놀, 센트룸, 판콜에이…"
+          aria-label="의약품 이름 검색"
+        />
+        <button type="submit" id="search-btn">검색</button>
+      </form>
+
+      <div class="examples">
+        예시:
+        <button class="chip" data-q="타이레놀">타이레놀</button>
+        <button class="chip" data-q="센트룸">센트룸</button>
+        <button class="chip" data-q="판콜에이">판콜에이</button>
+        <button class="chip" data-q="게보린">게보린</button>
+      </div>
+    </section>
+
+    <details class="sources-panel">
+      <summary>검색 소스 설정 <span class="source-badge" id="source-badge">데모</span></summary>
+      <div class="sources-body">
+        <p class="sources-note">
+          가격을 어디서 가져올지 설정합니다. 여러 소스를 추가할 수 있으며,
+          각 소스는 <strong>공개 검색 API 키</strong>로 연결합니다.
+        </p>
+        <div id="sources-list" class="sources-list"></div>
+        <button type="button" id="add-source" class="btn-secondary">+ 소스 추가</button>
+        <p class="sources-warn">
+          ⚠️ 보안 안내: 쇼핑몰 <strong>개인 아이디/비밀번호는 입력받지 않습니다.</strong>
+          자세한 이유는 아래 안내를 참고하세요.
+        </p>
+      </div>
+    </details>
+
+    <section id="status" class="status" aria-live="polite"></section>
+
+    <section id="results" class="results"></section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>
+        PriceComp는 가격 정보를 참고용으로 제공합니다. 실제 결제가·배송비는
+        판매처에서 반드시 다시 확인하세요. 일반의약품은 온라인 판매가 제한되며
+        약국 방문이 필요할 수 있습니다.
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
