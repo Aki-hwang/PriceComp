@@ -246,9 +246,126 @@ body {
   color: #4d2d00;
 }
 
-/* Status */
+/* Watchlist (관심 목록 / 장바구니) */
+.watchlist-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.wl-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.wl-head h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.watchlist { display: flex; flex-wrap: wrap; gap: 8px; }
+.wl-item {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+.wl-q {
+  border: none;
+  background: none;
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--link);
+  cursor: pointer;
+}
+.wl-q:hover { background: #eef4fb; }
+.wl-x {
+  border: none;
+  border-left: 1px solid var(--border);
+  background: none;
+  padding: 0 9px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.wl-x:hover { background: #ffebe9; color: #d1242f; }
+.wl-dashboard { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.wl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fg);
+}
+.wl-row:hover { border-color: var(--fg-muted); }
+.wl-row-q { font-weight: 600; }
+.wl-row-price strong { color: var(--accent); }
+.wl-row .muted, .wl-row.muted { color: var(--fg-muted); }
+
+/* 가격 담기 도구 */
+.source-badge.alt { background: #fff8c5; color: #7d4e00; border-color: #eac54f; }
+.steps { margin: 0 0 14px; padding-left: 20px; color: var(--fg-muted); font-size: 13px; }
+.steps li { margin-bottom: 4px; }
+.bookmarklet {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--fg);
+  color: #fff;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+}
+.bookmarklet:active { cursor: grabbing; }
+.contrib-wrap { margin-top: 18px; }
+.contrib-head { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.contrib-hint { font-weight: 400; color: var(--fg-muted); }
+.contrib-list { display: flex; flex-direction: column; gap: 6px; }
+.contrib-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: 13px;
+}
+.ci-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ci-name { color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.ci-price { white-space: nowrap; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.contrib-empty { color: var(--fg-muted); font-size: 13px; }
+
+/* Status + results bar */
 .status { min-height: 20px; margin: 8px 0; color: var(--fg-muted); font-size: 14px; }
 .status.error { color: #d1242f; }
+.results-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+.results-bar #results-summary { color: var(--fg-muted); font-size: 13px; }
+.btn-star {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-star:hover { background: var(--bg-canvas); }
+.btn-star.active { color: #9a6700; border-color: #eac54f; background: #fff8c5; }
 
 /* Results — 2열 블럭 그리드 */
 .results {
@@ -317,6 +434,12 @@ body {
   padding: 0 7px;
   border-radius: 999px;
   margin-bottom: 4px;
+}
+.contrib-tag {
+  color: #7d4e00;
+  background: #fff8c5;
+  border-color: #eac54f;
+  margin-left: 4px;
 }
 
 /* Skeleton */

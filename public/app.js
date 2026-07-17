@@ -5,12 +5,17 @@ const input = document.getElementById('search-input');
 const btn = document.getElementById('search-btn');
 const statusEl = document.getElementById('status');
 const resultsEl = document.getElementById('results');
+const resultsBar = document.getElementById('results-bar');
+const resultsSummary = document.getElementById('results-summary');
+const saveSearchBtn = document.getElementById('save-search');
 const sourceBadge = document.getElementById('source-badge');
 
 const won = (n) => n.toLocaleString('ko-KR') + '원';
+const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 
-/** 앱 상태: 로그인 사용자와 소스 목록 */
-const state = { user: null, sources: [] };
+/** 앱 상태 */
+const state = { user: null, sources: [], watchlist: [], contributions: [] };
+let activeQuery = '';
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
@@ -19,19 +24,53 @@ function escapeHtml(s) {
 }
 
 /* ------------------------------------------------------------------ 검색 */
+
+/** 담은 가격 중 검색어와 일치하는 것을 오퍼 형태로 변환 */
+function matchingContribs(query) {
+  const q = norm(query);
+  return state.contributions
+    .filter((c) => norm(c.name).includes(q) || norm(c.mallName).includes(q))
+    .map((c) => ({
+      name: c.name,
+      mallName: c.mallName,
+      price: Number(c.price),
+      link: c.link || '#',
+      contributed: true,
+      shippingFee: 0,
+      freeShipping: false,
+      shippingCondition: '직접 담은 가격 · 배송비 별도 확인',
+      totalPrice: Number(c.price),
+    }));
+}
+
+/** 서버 검색 결과 + 담은 가격을 합쳐 최종가 오름차순으로 반환 */
+async function fetchOffers(query) {
+  const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '검색에 실패했습니다.');
+  const offers = data.offers
+    .concat(matchingContribs(query))
+    .sort((a, b) => a.totalPrice - b.totalPrice);
+  return { source: data.source, offers };
+}
+
 async function search(query) {
+  query = query.trim();
+  if (!query) return;
+  input.value = query;
+  activeQuery = query;
   btn.disabled = true;
   statusEl.className = 'status';
   statusEl.textContent = `"${query}" 검색 중…`;
+  resultsBar.hidden = true;
   showSkeleton();
 
   try {
-    const res = await fetch('/api/search?q=' + encodeURIComponent(query));
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '검색에 실패했습니다.');
-    render(data);
+    const { source, offers } = await fetchOffers(query);
+    render(query, source, offers);
   } catch (err) {
     resultsEl.innerHTML = '';
+    resultsBar.hidden = true;
     statusEl.className = 'status error';
     statusEl.textContent = err.message;
   } finally {
@@ -45,23 +84,24 @@ function showSkeleton() {
     .join('');
 }
 
-function render(data) {
-  sourceBadge.textContent = data.source === 'naver' ? '네이버 실시간' : '데모';
+function render(query, source, offers) {
+  sourceBadge.textContent = source === 'naver' ? '네이버 실시간' : '데모';
 
-  if (!data.offers.length) {
+  if (!offers.length) {
     resultsEl.innerHTML = '';
+    resultsBar.hidden = true;
     statusEl.className = 'status';
-    statusEl.textContent = `"${data.query}"에 대한 결과가 없습니다. 다른 이름으로 검색해 보세요.`;
+    statusEl.textContent = `"${query}"에 대한 결과가 없습니다. 다른 이름으로 검색해 보세요.`;
     return;
   }
 
-  const cheapest = data.offers[0].totalPrice;
-  statusEl.className = 'status';
-  statusEl.textContent = `"${data.query}" · ${data.offers.length}개 판매처 · 최종가 낮은 순 정렬`;
+  const cheapest = offers[0].totalPrice;
+  statusEl.textContent = '';
+  resultsBar.hidden = false;
+  resultsSummary.textContent = `"${query}" · ${offers.length}개 · 최종가 낮은 순`;
+  updateSaveBtn();
 
-  resultsEl.innerHTML = data.offers
-    .map((o) => card(o, o.totalPrice === cheapest))
-    .join('');
+  resultsEl.innerHTML = offers.map((o) => card(o, o.totalPrice === cheapest)).join('');
 }
 
 function card(o, isBest) {
@@ -71,6 +111,8 @@ function card(o, isBest) {
 
   const breakdown = o.freeShipping
     ? '배송비 포함'
+    : o.contributed
+    ? '내가 담은 가격'
     : `상품 ${won(o.price)} + 배송 ${won(o.shippingFee)}`;
 
   const link =
@@ -81,7 +123,10 @@ function card(o, isBest) {
   return `
     <div class="result-card${isBest ? ' best' : ''}">
       <div class="rc-main">
-        ${isBest ? '<div class="best-tag">최저가</div>' : ''}
+        <div>
+          ${isBest ? '<span class="best-tag">최저가</span>' : ''}
+          ${o.contributed ? '<span class="best-tag contrib-tag">직접 담음</span>' : ''}
+        </div>
         <div class="rc-name">${link}</div>
         <div class="rc-meta"><span class="rc-mall">${escapeHtml(o.mallName)}</span></div>
         <div class="rc-ship">${ship} · <span class="ship-paid">${escapeHtml(o.shippingCondition)}</span></div>
@@ -91,6 +136,231 @@ function card(o, isBest) {
         <div class="rc-breakdown">${breakdown}</div>
       </div>
     </div>`;
+}
+
+/* --------------------------------------------------- 관심 목록(장바구니) */
+const watchlistCard = document.getElementById('watchlist-card');
+const watchlistEl = document.getElementById('watchlist');
+const dashboardEl = document.getElementById('wl-dashboard');
+
+function loadWatchlistLocal() {
+  try {
+    return JSON.parse(localStorage.getItem('pc-watchlist')) || [];
+  } catch {
+    return [];
+  }
+}
+function persistWatchlistLocal() {
+  localStorage.setItem('pc-watchlist', JSON.stringify(state.watchlist));
+}
+
+async function addToWatchlist(query) {
+  query = query.trim();
+  if (!query) return;
+  if (state.user) {
+    const res = await fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const d = await res.json();
+    state.watchlist = d.watchlist || [];
+  } else {
+    if (!state.watchlist.includes(query)) state.watchlist.unshift(query);
+    persistWatchlistLocal();
+  }
+  renderWatchlist();
+  updateSaveBtn();
+}
+
+async function removeFromWatchlist(query) {
+  if (state.user) {
+    const res = await fetch('/api/watchlist?q=' + encodeURIComponent(query), { method: 'DELETE' });
+    const d = await res.json();
+    state.watchlist = d.watchlist || [];
+  } else {
+    state.watchlist = state.watchlist.filter((x) => x !== query);
+    persistWatchlistLocal();
+  }
+  renderWatchlist();
+  updateSaveBtn();
+}
+
+function updateSaveBtn() {
+  if (!activeQuery) return;
+  const saved = state.watchlist.includes(activeQuery);
+  saveSearchBtn.textContent = saved ? '★ 관심 목록에 있음' : '☆ 관심에 추가';
+  saveSearchBtn.classList.toggle('active', saved);
+}
+
+function renderWatchlist() {
+  watchlistCard.hidden = state.watchlist.length === 0;
+  watchlistEl.innerHTML = state.watchlist
+    .map(
+      (q) => `
+      <span class="wl-item">
+        <button class="wl-q" data-q="${escapeHtml(q)}">${escapeHtml(q)}</button>
+        <button class="wl-x" data-x="${escapeHtml(q)}" title="삭제">✕</button>
+      </span>`
+    )
+    .join('');
+  dashboardEl.innerHTML = '';
+}
+
+async function checkAll() {
+  if (!state.watchlist.length) return;
+  dashboardEl.innerHTML = '<div class="wl-row muted">전체 최저가 확인 중…</div>';
+  const rows = [];
+  for (const q of state.watchlist) {
+    try {
+      const { offers } = await fetchOffers(q);
+      if (offers.length) {
+        const b = offers[0];
+        rows.push(
+          `<button class="wl-row" data-q="${escapeHtml(q)}"><span class="wl-row-q">${escapeHtml(
+            q
+          )}</span><span class="wl-row-price"><strong>${won(b.totalPrice)}</strong> · ${escapeHtml(
+            b.mallName
+          )}</span></button>`
+        );
+      } else {
+        rows.push(
+          `<button class="wl-row" data-q="${escapeHtml(q)}"><span class="wl-row-q">${escapeHtml(
+            q
+          )}</span><span class="wl-row-price muted">결과 없음</span></button>`
+        );
+      }
+    } catch {
+      rows.push(
+        `<div class="wl-row muted"><span class="wl-row-q">${escapeHtml(
+          q
+        )}</span><span class="wl-row-price">오류</span></div>`
+      );
+    }
+  }
+  dashboardEl.innerHTML = rows.join('');
+}
+
+watchlistEl.addEventListener('click', (e) => {
+  const q = e.target.dataset.q;
+  const x = e.target.dataset.x;
+  if (q != null) search(q);
+  else if (x != null) removeFromWatchlist(x);
+});
+dashboardEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.wl-row');
+  if (row && row.dataset.q) {
+    search(row.dataset.q);
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+document.getElementById('check-all').addEventListener('click', checkAll);
+saveSearchBtn.addEventListener('click', () => {
+  if (!activeQuery) return;
+  if (state.watchlist.includes(activeQuery)) removeFromWatchlist(activeQuery);
+  else addToWatchlist(activeQuery);
+});
+
+/* --------------------------------------------- 담은 가격 (북마클릿 기여) */
+const contribListEl = document.getElementById('contrib-list');
+const contribCountEl = document.getElementById('contrib-count');
+
+function loadContribLocal() {
+  try {
+    return JSON.parse(localStorage.getItem('pc-contrib')) || [];
+  } catch {
+    return [];
+  }
+}
+function persistContribLocal() {
+  localStorage.setItem('pc-contrib', JSON.stringify(state.contributions));
+}
+
+function renderContrib() {
+  contribCountEl.textContent = state.contributions.length;
+  contribListEl.innerHTML =
+    state.contributions
+      .map(
+        (c, i) => `
+      <div class="contrib-item">
+        <div class="ci-main">
+          <span class="rc-mall">${escapeHtml(c.mallName)}</span>
+          <span class="ci-name">${escapeHtml(c.name)}</span>
+        </div>
+        <div class="ci-price">${Number(c.price).toLocaleString('ko-KR')}원
+          <button class="btn-remove" data-ci="${i}">삭제</button>
+        </div>
+      </div>`
+      )
+      .join('') || '<div class="contrib-empty">아직 담은 가격이 없습니다.</div>';
+}
+
+async function addContribution(data) {
+  const offer = {
+    name: String(data.name || '').trim(),
+    mallName: String(data.mallName || '').trim(),
+    price: Math.floor(Number(data.price) || 0),
+    link: data.link || '#',
+  };
+  if (!offer.price) {
+    toast('가격을 인식하지 못했습니다.');
+    return;
+  }
+  if (state.user) {
+    const res = await fetch('/api/contrib', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ offer }),
+    });
+    const d = await res.json();
+    state.contributions = d.items || [];
+  } else {
+    state.contributions.unshift(offer);
+    persistContribLocal();
+  }
+  renderContrib();
+  toast(`“${offer.mallName}”의 가격 ${won(offer.price)}을 담았어요.`);
+}
+
+async function removeContribution(i) {
+  if (state.user) {
+    const res = await fetch('/api/contrib?i=' + i, { method: 'DELETE' });
+    const d = await res.json();
+    state.contributions = d.items || [];
+  } else {
+    state.contributions.splice(i, 1);
+    persistContribLocal();
+  }
+  renderContrib();
+}
+
+contribListEl.addEventListener('click', (e) => {
+  if (e.target.dataset.ci != null) removeContribution(Number(e.target.dataset.ci));
+});
+
+function toast(msg) {
+  statusEl.className = 'status';
+  statusEl.textContent = msg;
+}
+
+/* 북마클릿: 현재 페이지(로그인된 본인 브라우저)에서 가격만 읽어 PriceComp로 전달 */
+function buildBookmarklet() {
+  const code =
+    "javascript:(function(){function g(){try{var L=document.querySelectorAll('script[type=\"application/ld+json\"]');for(var i=0;i<L.length;i++){var d=JSON.parse(L[i].textContent);var a=Array.isArray(d)?d:[d];for(var j=0;j<a.length;j++){var o=a[j].offers;var f=o&&(Array.isArray(o)?o[0]:o);if(f&&f.price)return Number(f.price);}}}catch(e){}var m=document.querySelector('meta[property=\"product:price:amount\"],meta[property=\"og:price:amount\"]');if(m&&m.content)return Number(m.content);return null;}var p=g();if(p==null){var s=(''+window.getSelection()).replace(/[^0-9]/g,'');if(s)p=Number(s);}if(p==null){var t=prompt('가격을 자동으로 못 찾았어요. 가격 숫자만 입력(원):');if(!t)return;p=Number((''+t).replace(/[^0-9]/g,''));}if(!p){alert('가격을 인식하지 못했어요.');return;}var n=(document.querySelector('meta[property=\"og:title\"]')||{}).content||document.title;var mall=location.hostname.replace(/^www\\./,'');var data={name:n,mallName:mall,price:p,link:location.href};var u='__ORIGIN__/#add='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(data)))));window.open(u,'_blank');})();";
+  return code.replace('__ORIGIN__', location.origin);
+}
+
+function ingestHash() {
+  const m = location.hash.match(/[#&]add=([^&]+)/);
+  if (!m) return;
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(m[1]))));
+    addContribution(JSON.parse(json));
+    document.querySelectorAll('.sources-panel')[1]?.setAttribute('open', '');
+  } catch {
+    toast('담은 가격을 읽지 못했습니다.');
+  }
+  history.replaceState(null, '', location.pathname);
 }
 
 /* --------------------------------------------------------- 인증 / 계정 */
@@ -143,6 +413,13 @@ authModal.addEventListener('click', (e) => {
   if (e.target === authModal) closeAuth();
 });
 
+function applyPayload(data) {
+  state.user = data.user;
+  state.sources = data.sources && data.sources.length ? data.sources : defaultSources();
+  state.watchlist = data.watchlist || [];
+  state.contributions = data.contributions || [];
+}
+
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   authError.textContent = '';
@@ -151,19 +428,13 @@ authForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/' + authMode, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: authUsername.value,
-        password: authPassword.value,
-      }),
+      body: JSON.stringify({ username: authUsername.value, password: authPassword.value }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '요청에 실패했습니다.');
-    state.user = data.user;
-    state.sources = data.sources && data.sources.length ? data.sources : defaultSources();
+    applyPayload(data);
     closeAuth();
-    renderAuthArea();
-    renderSources();
-    updateSourcesNote();
+    renderAll();
   } catch (err) {
     authError.textContent = err.message;
   } finally {
@@ -175,9 +446,9 @@ async function logout() {
   await fetch('/api/logout', { method: 'POST' });
   state.user = null;
   state.sources = loadLocalSources();
-  renderAuthArea();
-  renderSources();
-  updateSourcesNote();
+  state.watchlist = loadWatchlistLocal();
+  state.contributions = loadContribLocal();
+  renderAll();
 }
 
 async function loadMe() {
@@ -185,18 +456,29 @@ async function loadMe() {
     const res = await fetch('/api/me');
     const data = await res.json();
     if (data.user) {
-      state.user = data.user;
-      state.sources = data.sources && data.sources.length ? data.sources : defaultSources();
+      applyPayload(data);
     } else {
       state.user = null;
       state.sources = loadLocalSources();
+      state.watchlist = loadWatchlistLocal();
+      state.contributions = loadContribLocal();
     }
   } catch {
     state.sources = loadLocalSources();
+    state.watchlist = loadWatchlistLocal();
+    state.contributions = loadContribLocal();
   }
+  renderAll();
+  ingestHash();
+}
+
+function renderAll() {
   renderAuthArea();
   renderSources();
+  renderWatchlist();
+  renderContrib();
   updateSourcesNote();
+  updateSaveBtn();
 }
 
 /* --------------------------------------------------------- 소스 설정 UI */
@@ -299,18 +581,16 @@ saveBtn.addEventListener('click', async () => {
 /* -------------------------------------------------------------- 이벤트 */
 form.addEventListener('submit', (e) => {
   e.preventDefault();
-  const q = input.value.trim();
-  if (q) search(q);
+  search(input.value);
 });
 document.querySelectorAll('.chip').forEach((chip) => {
-  chip.addEventListener('click', () => {
-    input.value = chip.dataset.q;
-    search(chip.dataset.q);
-  });
+  chip.addEventListener('click', () => search(chip.dataset.q));
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !authModal.hidden) closeAuth();
 });
+window.addEventListener('hashchange', ingestHash);
 
+document.getElementById('bookmarklet').setAttribute('href', buildBookmarklet());
 setAuthMode('login');
 loadMe();

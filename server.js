@@ -48,6 +48,24 @@ function decodeSources(sources = []) {
   }));
 }
 
+/** 로그인 응답에 담을 사용자 전체 상태 */
+function userPayload(username, u) {
+  return {
+    user: username,
+    sources: decodeSources(u.sources),
+    watchlist: u.watchlist || [],
+    contributions: u.contributions || [],
+  };
+}
+
+/** 현재 세션 사용자와 저장소를 함께 반환 (없으면 null) */
+function currentUser(req) {
+  if (!req.session.user) return null;
+  const users = store.readUsers();
+  const u = users[req.session.user];
+  return u ? { users, u } : null;
+}
+
 function validateCreds(body) {
   const username = (body.username || '').trim();
   const password = body.password || '';
@@ -65,10 +83,10 @@ app.post('/api/signup', (req, res) => {
   if (users[username]) return res.status(409).json({ error: '이미 존재하는 아이디입니다.' });
 
   const { salt, hash } = store.hashPassword(req.body.password);
-  users[username] = { salt, hash, sources: [] };
+  users[username] = { salt, hash, sources: [], watchlist: [], contributions: [] };
   store.writeUsers(users);
   req.session.user = username;
-  res.json({ user: username, sources: [] });
+  res.json(userPayload(username, users[username]));
 });
 
 app.post('/api/login', (req, res) => {
@@ -79,7 +97,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
   req.session.user = username;
-  res.json({ user: username, sources: decodeSources(u.sources) });
+  res.json(userPayload(username, u));
 });
 
 app.post('/api/logout', (req, res) => {
@@ -90,7 +108,7 @@ app.get('/api/me', (req, res) => {
   const users = store.readUsers();
   const u = req.session.user && users[req.session.user];
   if (!u) return res.json({ user: null });
-  res.json({ user: req.session.user, sources: decodeSources(u.sources) });
+  res.json(userPayload(req.session.user, u));
 });
 
 app.put('/api/sources', (req, res) => {
@@ -108,6 +126,71 @@ app.put('/api/sources', (req, res) => {
   }));
   store.writeUsers(users);
   res.json({ sources: decodeSources(u.sources) });
+});
+
+/* ---------------------------------------------------- 관심 목록(장바구니) */
+
+app.get('/api/watchlist', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  res.json({ watchlist: c.u.watchlist || [] });
+});
+
+app.post('/api/watchlist', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const query = String(req.body.query || '').trim().slice(0, 100);
+  if (!query) return res.status(400).json({ error: '검색어가 비어 있습니다.' });
+  const list = c.u.watchlist || [];
+  if (!list.includes(query)) list.unshift(query);
+  c.u.watchlist = list.slice(0, 50);
+  store.writeUsers(c.users);
+  res.json({ watchlist: c.u.watchlist });
+});
+
+app.delete('/api/watchlist', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const query = String(req.query.q || '');
+  c.u.watchlist = (c.u.watchlist || []).filter((x) => x !== query);
+  store.writeUsers(c.users);
+  res.json({ watchlist: c.u.watchlist });
+});
+
+/* ------------------------------------------------ 담은 가격(북마클릿 기여) */
+
+app.get('/api/contrib', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  res.json({ items: c.u.contributions || [] });
+});
+
+app.post('/api/contrib', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const o = req.body.offer || {};
+  const offer = {
+    name: String(o.name || '').slice(0, 200),
+    mallName: String(o.mallName || '').slice(0, 80),
+    price: Math.max(0, Math.floor(Number(o.price) || 0)),
+    link: String(o.link || '').slice(0, 500),
+  };
+  if (!offer.price) return res.status(400).json({ error: '유효한 가격이 아닙니다.' });
+  c.u.contributions = [offer].concat(c.u.contributions || []).slice(0, 100);
+  store.writeUsers(c.users);
+  res.json({ items: c.u.contributions });
+});
+
+app.delete('/api/contrib', (req, res) => {
+  const c = currentUser(req);
+  if (!c) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const i = Number(req.query.i);
+  const list = c.u.contributions || [];
+  if (Number.isInteger(i) && i >= 0 && i < list.length) {
+    list.splice(i, 1);
+    store.writeUsers(c.users);
+  }
+  res.json({ items: c.u.contributions || [] });
 });
 
 /** 판매처 이름으로 배송 정책을 찾는다. 등록되지 않은 판매처는 기본 정책을 쓴다. */

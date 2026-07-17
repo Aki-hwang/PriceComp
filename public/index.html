@@ -45,6 +45,15 @@
       </div>
     </section>
 
+    <section class="watchlist-card" id="watchlist-card" hidden>
+      <div class="wl-head">
+        <h2>🔖 내 관심 목록</h2>
+        <button type="button" id="check-all" class="btn-secondary">모두 확인</button>
+      </div>
+      <div id="watchlist" class="watchlist"></div>
+      <div id="wl-dashboard" class="wl-dashboard"></div>
+    </section>
+
     <details class="sources-panel">
       <summary>검색 소스 설정 <span class="source-badge" id="source-badge">데모</span></summary>
       <div class="sources-body">
@@ -67,7 +76,35 @@
       </div>
     </details>
 
+    <details class="sources-panel">
+      <summary>가격 담기 도구 <span class="source-badge alt">로그인 필요 사이트용</span></summary>
+      <div class="sources-body">
+        <p class="sources-note">
+          로그인해야 가격이 보이는 사이트는 <strong>본인 브라우저에서</strong> 가격 숫자만
+          가져옵니다. 로그인 정보·쿠키는 PriceComp에 <strong>저장되지 않습니다.</strong>
+        </p>
+        <ol class="steps">
+          <li>아래 <strong>💊 가격 담기</strong>를 브라우저 <strong>북마크바로 드래그</strong>해 추가하세요.</li>
+          <li>가격을 보려는 쇼핑몰에 평소처럼 로그인한 뒤 상품 페이지를 엽니다.</li>
+          <li>추가한 북마크를 클릭하면 그 페이지의 가격이 PriceComp로 담깁니다.</li>
+        </ol>
+        <a class="bookmarklet" id="bookmarklet" href="#">💊 가격 담기</a>
+        <div class="contrib-wrap">
+          <div class="contrib-head">
+            담은 가격 <span id="contrib-count">0</span>건
+            <span class="contrib-hint">— 검색하면 자동으로 함께 비교됩니다</span>
+          </div>
+          <div id="contrib-list" class="contrib-list"></div>
+        </div>
+      </div>
+    </details>
+
     <section id="status" class="status" aria-live="polite"></section>
+
+    <div id="results-bar" class="results-bar" hidden>
+      <span id="results-summary"></span>
+      <button type="button" id="save-search" class="btn-star">☆ 관심에 추가</button>
+    </div>
 
     <section id="results" class="results"></section>
   </main>
