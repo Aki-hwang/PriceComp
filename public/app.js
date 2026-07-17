@@ -95,12 +95,16 @@ function render(query, source, offers) {
     return;
   }
 
-  const cheapest = offers[0].totalPrice;
   statusEl.textContent = '';
   resultsBar.hidden = false;
   resultsSummary.textContent = `"${query}" · ${offers.length}개 · 최종가 낮은 순`;
   updateSaveBtn();
+  renderCards(offers);
+}
 
+/** 오퍼 배열을 결과 영역에 카드로 렌더 (최저가 강조) */
+function renderCards(offers) {
+  const cheapest = offers[0].totalPrice;
   resultsEl.innerHTML = offers.map((o) => card(o, o.totalPrice === cheapest)).join('');
 }
 
@@ -201,6 +205,7 @@ async function removeFromWatchlist(query) {
 
 function updateSaveBtn() {
   if (!activeQuery) return;
+  saveSearchBtn.style.display = '';
   const saved = state.watchlist.includes(activeQuery);
   saveSearchBtn.textContent = saved ? '★ 관심 목록에 있음' : '☆ 관심에 추가';
   saveSearchBtn.classList.toggle('active', saved);
@@ -501,7 +506,7 @@ const saveState = document.getElementById('save-state');
 const sourcesNote = document.getElementById('sources-note');
 
 function defaultSources() {
-  return [{ name: '네이버 쇼핑', key: '' }];
+  return [{ name: '', url: '' }];
 }
 function loadLocalSources() {
   try {
@@ -518,10 +523,10 @@ function updateSourcesNote() {
   saveBtn.hidden = !state.user;
   if (state.user) {
     sourcesNote.innerHTML =
-      '가격을 어디서 가져올지 설정합니다. 설정은 <strong>계정에 저장</strong>되어 다음에도 그대로 사용됩니다.';
+      '가격을 가져올 <strong>상품 페이지 URL</strong>을 등록하세요. <strong>가격 가져오기</strong>를 누르면 각 링크에서 가격을 읽어옵니다. 설정은 <strong>계정에 저장</strong>됩니다.';
   } else {
     sourcesNote.innerHTML =
-      '가격을 어디서 가져올지 설정합니다. <strong>로그인하면 설정이 계정에 저장</strong>됩니다. (로그인 전에는 이 브라우저에만 임시 저장)';
+      '가격을 가져올 <strong>상품 페이지 URL</strong>을 등록하세요. <strong>가격 가져오기</strong>를 누르면 각 링크에서 가격을 읽어옵니다. <strong>로그인하면 계정에 저장</strong>됩니다.';
   }
 }
 
@@ -531,11 +536,75 @@ function renderSources() {
     const row = document.createElement('div');
     row.className = 'source-row';
     row.innerHTML = `
-      <input type="text" placeholder="소스 이름 (예: 네이버 쇼핑)" value="${escapeHtml(s.name || '')}" data-i="${i}" data-f="name" />
-      <input type="text" placeholder="공개 API 키 (선택)" value="${escapeHtml(s.key || '')}" data-i="${i}" data-f="key" autocomplete="off" />
+      <input type="text" placeholder="이름 (예: 쿠팡 타이레놀)" value="${escapeHtml(s.name || '')}" data-i="${i}" data-f="name" />
+      <input type="url" placeholder="상품 페이지 URL (https://…)" value="${escapeHtml(s.url || '')}" data-i="${i}" data-f="url" autocomplete="off" spellcheck="false" />
       <button type="button" class="btn-remove" data-remove="${i}">삭제</button>`;
     sourcesList.appendChild(row);
   });
+}
+
+/** 등록된 URL 소스에서 가격을 가져와 결과로 표시 */
+async function fetchSourcePrices() {
+  const withUrl = state.sources.filter((s) => /^https?:\/\//i.test((s.url || '').trim()));
+  if (!withUrl.length) {
+    toast('URL이 있는 소스가 없습니다. 소스에 상품 페이지 주소를 넣어주세요.');
+    return;
+  }
+  activeQuery = '';
+  resultsBar.hidden = true;
+  statusEl.className = 'status';
+  statusEl.textContent = `${withUrl.length}개 링크에서 가격 가져오는 중…`;
+  showSkeleton();
+
+  const offers = [];
+  const failed = [];
+  for (const s of withUrl) {
+    try {
+      const res = await fetch('/api/fetch-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: s.url.trim() }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        const label = (s.name || '').trim() || d.mallName;
+        offers.push({
+          name: (s.name || '').trim() || d.name,
+          mallName: label,
+          price: d.price,
+          link: d.link,
+          shippingFee: 0,
+          freeShipping: false,
+          shippingCondition: '가격 자동 추출 · 배송비 별도 확인',
+          totalPrice: d.price,
+        });
+      } else {
+        failed.push({ name: (s.name || '').trim() || s.url, msg: d.error });
+      }
+    } catch {
+      failed.push({ name: (s.name || '').trim() || s.url, msg: '요청 실패' });
+    }
+  }
+
+  if (!offers.length) {
+    resultsEl.innerHTML = '';
+    resultsBar.hidden = true;
+    statusEl.className = 'status error';
+    statusEl.textContent =
+      '가져온 가격이 없습니다. ' +
+      (failed.length ? failed.map((f) => `${f.name}: ${f.msg}`).join(' / ') : '');
+    return;
+  }
+
+  offers.sort((a, b) => a.totalPrice - b.totalPrice);
+  resultsBar.hidden = false;
+  resultsSummary.textContent = `내 링크 ${offers.length}개 · 최종가 낮은 순`;
+  saveSearchBtn.style.display = 'none'; // 링크 가격에는 관심추가 숨김
+  renderCards(offers);
+  statusEl.className = 'status';
+  statusEl.textContent = failed.length
+    ? `가져오지 못한 링크: ${failed.map((f) => `${f.name}(${f.msg})`).join(', ')}`
+    : '';
 }
 
 function markDirty() {
@@ -560,10 +629,11 @@ sourcesList.addEventListener('click', (e) => {
   markDirty();
 });
 document.getElementById('add-source').addEventListener('click', () => {
-  state.sources.push({ name: '', key: '' });
+  state.sources.push({ name: '', url: '' });
   renderSources();
   markDirty();
 });
+document.getElementById('fetch-prices').addEventListener('click', fetchSourcePrices);
 
 saveBtn.addEventListener('click', async () => {
   saveBtn.disabled = true;

@@ -55,23 +55,24 @@
     </section>
 
     <details class="sources-panel">
-      <summary>검색 소스 설정 <span class="source-badge" id="source-badge">데모</span></summary>
+      <summary>검색 소스 (사이트 링크) <span class="source-badge" id="source-badge">데모</span></summary>
       <div class="sources-body">
         <p class="sources-note" id="sources-note">
-          가격을 어디서 가져올지 설정합니다. <strong>로그인하면 설정이 계정에 저장</strong>되어
-          다음에도 그대로 사용할 수 있습니다.
+          가격을 가져올 <strong>상품 페이지 URL</strong>을 등록하세요. <strong>가격 가져오기</strong>를
+          누르면 각 링크에서 가격을 읽어와 비교합니다. <strong>로그인하면 계정에 저장</strong>됩니다.
         </p>
         <div id="sources-list" class="sources-list"></div>
         <div class="sources-actions">
           <button type="button" id="add-source" class="btn-secondary">+ 소스 추가</button>
-          <button type="button" id="save-sources" class="btn-primary" hidden>저장</button>
+          <button type="button" id="fetch-prices" class="btn-primary">가격 가져오기</button>
+          <button type="button" id="save-sources" class="btn-secondary" hidden>저장</button>
           <span class="save-state" id="save-state"></span>
         </div>
         <p class="sources-warn">
-          🔒 보안 안내: 소스에는 <strong>쇼핑몰 아이디·비밀번호를 넣지 않습니다.</strong>
-          가격 조회는 <strong>공개 API 키</strong>로만 하며, 저장 시 키는 암호화(AES-256-GCM)됩니다.
-          로그인이 필요한 사이트의 가격은 아래 <strong>가격 담기 도구(북마클릿)</strong>로,
-          본인 브라우저 세션에서 안전하게 가져오세요.
+          ℹ️ 참고: <strong>공개된 상품 페이지</strong>는 서버가 가격을 자동으로 읽어옵니다(사이트 구조에
+          따라 실패할 수 있어요). <strong>로그인해야 가격이 보이는 사이트</strong>는 아래
+          <strong>가격 담기 도구(북마클릿)</strong>로, 본인 브라우저에서 담으세요. 사이트 첫 화면보다
+          <strong>구체적인 상품 페이지 주소</strong>를 넣어야 가격이 나옵니다.
         </p>
       </div>
     </details>

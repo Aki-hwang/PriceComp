@@ -14,6 +14,7 @@ const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 const store = require('./lib/store');
+const pricefetch = require('./lib/pricefetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,13 +47,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /* ------------------------------------------------------------ 인증 / 계정 */
 
-/** 저장된 소스의 암호화 필드를 복호화해 클라이언트로 돌려줄 형태로 변환.
- *  소스는 이름 + 공개 API 키만 저장합니다(쇼핑몰 아이디/비번은 저장하지 않음). */
+/** 소스는 이름 + 상품 페이지 URL만 저장합니다(비밀번호/키 없음, 암호화 불필요). */
 function decodeSources(sources = []) {
-  return sources.map((s) => ({
-    name: s.name,
-    key: store.decrypt(s.key),
-  }));
+  return sources.map((s) => ({ name: s.name || '', url: s.url || '' }));
 }
 
 /** 로그인 응답에 담을 사용자 전체 상태 */
@@ -127,10 +124,26 @@ app.put('/api/sources', (req, res) => {
   const incoming = Array.isArray(req.body.sources) ? req.body.sources : [];
   u.sources = incoming.slice(0, 20).map((s) => ({
     name: String(s.name || '').slice(0, 60),
-    key: store.encrypt(String(s.key || '').slice(0, 400)),
+    url: String(s.url || '').slice(0, 500),
   }));
   store.writeUsers(users);
   res.json({ sources: decodeSources(u.sources) });
+});
+
+/** URL 소스에서 가격을 가져온다. 서버가 페이지를 대신 요청해 가격을 추출.
+ *  로그인 불필요(개인 도구). SSRF 방지는 pricefetch 모듈에서 처리. */
+app.post('/api/fetch-price', async (req, res) => {
+  const url = String(req.body.url || '').trim();
+  if (!url) return res.status(400).json({ ok: false, error: 'URL을 입력해 주세요.' });
+  try {
+    const r = await pricefetch.fetchPrice(url);
+    if (r.price == null) {
+      return res.json({ ok: false, ...r, error: '이 페이지에서 가격을 자동으로 찾지 못했습니다.' });
+    }
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
 });
 
 /* ---------------------------------------------------- 관심 목록(장바구니) */
