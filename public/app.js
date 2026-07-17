@@ -104,6 +104,19 @@ function render(query, source, offers) {
   resultsEl.innerHTML = offers.map((o) => card(o, o.totalPrice === cheapest)).join('');
 }
 
+// 결과 블럭 아무 곳이나 클릭하면 해당 링크로 이동 (내부 링크 클릭은 그대로 둠)
+resultsEl.addEventListener('click', (e) => {
+  if (e.target.closest('a')) return;
+  const cardEl = e.target.closest('.result-card');
+  if (cardEl && cardEl.dataset.href) window.open(cardEl.dataset.href, '_blank', 'noopener');
+});
+
+/** 판매처로 이동할 링크. 실제 링크가 없으면(데모) 상품명 검색으로 대체 */
+function linkFor(o) {
+  if (o.link && o.link !== '#') return o.link;
+  return 'https://search.shopping.naver.com/search/all?query=' + encodeURIComponent(o.name);
+}
+
 function card(o, isBest) {
   const ship = o.freeShipping
     ? '<span class="ship-free">무료배송</span>'
@@ -115,25 +128,25 @@ function card(o, isBest) {
     ? '내가 담은 가격'
     : `상품 ${won(o.price)} + 배송 ${won(o.shippingFee)}`;
 
-  const link =
-    o.link && o.link !== '#'
-      ? `<a href="${o.link}" target="_blank" rel="noopener">${escapeHtml(o.name)}</a>`
-      : escapeHtml(o.name);
+  const href = linkFor(o);
+  const realLink = o.link && o.link !== '#';
+  const goLabel = realLink ? '구매하러 가기' : '상품 검색';
 
   return `
-    <div class="result-card${isBest ? ' best' : ''}">
+    <div class="result-card${isBest ? ' best' : ''}" data-href="${href}" title="${escapeHtml(goLabel)}">
       <div class="rc-main">
         <div>
           ${isBest ? '<span class="best-tag">최저가</span>' : ''}
           ${o.contributed ? '<span class="best-tag contrib-tag">직접 담음</span>' : ''}
         </div>
-        <div class="rc-name">${link}</div>
+        <div class="rc-name"><a href="${href}" target="_blank" rel="noopener">${escapeHtml(o.name)}</a></div>
         <div class="rc-meta"><span class="rc-mall">${escapeHtml(o.mallName)}</span></div>
         <div class="rc-ship">${ship} · <span class="ship-paid">${escapeHtml(o.shippingCondition)}</span></div>
       </div>
       <div class="rc-price">
         <div class="rc-total">${o.totalPrice.toLocaleString('ko-KR')}<span class="won">원</span></div>
         <div class="rc-breakdown">${breakdown}</div>
+        <a class="go-btn" href="${href}" target="_blank" rel="noopener">${goLabel} <span class="go-arrow" aria-hidden="true">→</span></a>
       </div>
     </div>`;
 }
@@ -488,7 +501,7 @@ const saveState = document.getElementById('save-state');
 const sourcesNote = document.getElementById('sources-note');
 
 function defaultSources() {
-  return [{ name: '네이버 쇼핑', id: '', password: '', key: '' }];
+  return [{ name: '네이버 쇼핑', key: '' }];
 }
 function loadLocalSources() {
   try {
@@ -518,10 +531,8 @@ function renderSources() {
     const row = document.createElement('div');
     row.className = 'source-row';
     row.innerHTML = `
-      <input type="text" placeholder="소스 이름" value="${escapeHtml(s.name || '')}" data-i="${i}" data-f="name" />
-      <input type="text" placeholder="아이디" value="${escapeHtml(s.id || '')}" data-i="${i}" data-f="id" autocomplete="off" />
-      <input type="password" placeholder="비밀번호" value="${escapeHtml(s.password || '')}" data-i="${i}" data-f="password" autocomplete="new-password" />
-      <input type="text" placeholder="API 키 (선택)" value="${escapeHtml(s.key || '')}" data-i="${i}" data-f="key" autocomplete="off" />
+      <input type="text" placeholder="소스 이름 (예: 네이버 쇼핑)" value="${escapeHtml(s.name || '')}" data-i="${i}" data-f="name" />
+      <input type="text" placeholder="공개 API 키 (선택)" value="${escapeHtml(s.key || '')}" data-i="${i}" data-f="key" autocomplete="off" />
       <button type="button" class="btn-remove" data-remove="${i}">삭제</button>`;
     sourcesList.appendChild(row);
   });
@@ -549,7 +560,7 @@ sourcesList.addEventListener('click', (e) => {
   markDirty();
 });
 document.getElementById('add-source').addEventListener('click', () => {
-  state.sources.push({ name: '', id: '', password: '', key: '' });
+  state.sources.push({ name: '', key: '' });
   renderSources();
   markDirty();
 });

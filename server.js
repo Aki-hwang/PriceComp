@@ -46,12 +46,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /* ------------------------------------------------------------ 인증 / 계정 */
 
-/** 저장된 소스의 암호화 필드를 복호화해 클라이언트로 돌려줄 형태로 변환 */
+/** 저장된 소스의 암호화 필드를 복호화해 클라이언트로 돌려줄 형태로 변환.
+ *  소스는 이름 + 공개 API 키만 저장합니다(쇼핑몰 아이디/비번은 저장하지 않음). */
 function decodeSources(sources = []) {
   return sources.map((s) => ({
     name: s.name,
-    id: store.decrypt(s.id),
-    password: store.decrypt(s.password),
     key: store.decrypt(s.key),
   }));
 }
@@ -128,8 +127,6 @@ app.put('/api/sources', (req, res) => {
   const incoming = Array.isArray(req.body.sources) ? req.body.sources : [];
   u.sources = incoming.slice(0, 20).map((s) => ({
     name: String(s.name || '').slice(0, 60),
-    id: store.encrypt(String(s.id || '').slice(0, 200)),
-    password: store.encrypt(String(s.password || '').slice(0, 200)),
     key: store.encrypt(String(s.key || '').slice(0, 400)),
   }));
   store.writeUsers(users);
