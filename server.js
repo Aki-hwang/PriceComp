@@ -25,13 +25,21 @@ const mockProducts = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'data', 'mock-products.json'), 'utf-8')
 );
 
+const isProd = process.env.NODE_ENV === 'production';
+if (isProd) app.set('trust proxy', 1); // Railway 등 HTTPS 프록시 뒤에서 secure 쿠키 사용
+
 app.use(express.json());
 app.use(
   session({
     secret: process.env.APP_SECRET || 'dev-insecure-secret-change-me',
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 7 },
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProd,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
   })
 );
 app.use(express.static(path.join(__dirname, 'public')));

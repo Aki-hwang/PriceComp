@@ -70,6 +70,34 @@ cp .env.example .env
 
 그래서 대신 **공식 공개 검색 API 키**를 소스별로 등록하는 방식을 택했습니다. 안전하고, 약관에 맞으며, 안정적입니다.
 
+## 배포 (Railway)
+
+이 저장소는 Railway 배포 준비가 되어 있습니다(`railway.json`, `Procfile`, `PORT`/`NODE_ENV`/`DATA_DIR` 대응).
+
+1. [railway.app](https://railway.app) 로그인 → **New Project → Deploy from GitHub repo** → 이 저장소 선택
+   (배포 브랜치는 `claude/medicine-price-comparison-009bui`, 또는 main에 병합 후 선택)
+2. **Variables** 탭에서 환경변수 설정:
+   - `APP_SECRET` = 길고 무작위한 값 (예: `openssl rand -hex 32`) — **필수**
+   - `NODE_ENV` = `production`
+   - `DATA_DIR` = `/data` (아래 볼륨과 함께 계정 영구 저장)
+   - (선택) `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` — 실시간 가격 사용 시
+3. **계정 데이터 영구 저장(중요):** 서비스 → **Volumes → New Volume**, 마운트 경로를 `/data` 로 지정.
+   Railway 파일시스템은 재배포 시 초기화되므로, 볼륨이 없으면 가입한 계정이 사라집니다.
+4. **Networking → Generate Domain** 으로 공개 URL 생성. 끝.
+
+> Railway는 `PORT`를 자동 주입하며 서버가 이를 사용합니다. `NODE_ENV=production`이면
+> HTTPS 프록시 뒤에서 secure 세션 쿠키가 켜집니다.
+
+### CLI로 배포 (선택)
+
+```bash
+npm i -g @railway/cli
+railway login
+railway init          # 또는 railway link (기존 프로젝트)
+railway up
+railway variables set APP_SECRET=$(openssl rand -hex 32) NODE_ENV=production DATA_DIR=/data
+```
+
 ## 구조
 
 ```
